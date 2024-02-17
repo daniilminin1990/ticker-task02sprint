@@ -1,35 +1,76 @@
-import React, { useState } from 'react';
+import React, { ChangeEvent, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
-import { Button } from './components/Button';
 import { isDisabled } from '@testing-library/user-event/dist/utils';
-import InputBox from './components/InputBox';
 
+type counterStateType = {
+  min: number | string,
+  max: number | string,
+  curNum: number
+}
 
 function App() {
+  const initialText = 'Set different min and max'
+  const txtMaxMoreMin = 'Max cannot be less than minimum. Increase minimum or decrease maximum'
+  const txtMinMoreMax = 'Min cannot be more than maximum. Increase maximum or decrease minimum'
 
-  const minValue: number = 0;
-  const maxValue: number = 5
+  const [error, setError] = useState<string>('')
 
-  // State для value
-  const [value, setValue] = useState<number>(minValue)
+  const [counterState, setCounterState] = useState<counterStateType>({
+    min: '',
+    max: '',
+    curNum: 0,
+  })
 
-  const increaseHandler = () => {
-    if (value < maxValue) {
-      setValue(value + 1)
+  const min = counterState.min
+  const max = counterState.max
+
+  const onChangeMaxHandler = (e: ChangeEvent<HTMLInputElement>) => {
+    const maxVal = Number(e.currentTarget.value)
+    setCounterState({ ...counterState, max: maxVal })
+  }
+  const onChangeMinHandler = (e: ChangeEvent<HTMLInputElement>) => {
+    const minVal = Number(e.currentTarget.value)
+    setCounterState({ ...counterState, min: minVal })
+  }
+
+  const onClickIncHandler = () => {
+    const numMin = Number(counterState.min)
+    const numMax = Number(counterState.max)
+    let minInc = numMin + 1
+    if (minInc >= numMax) {
+      setError(txtMinMoreMax)
+    } else if (counterState.max <= counterState.min) {
+      setError(txtMaxMoreMin)
+    } else {
+      setCounterState({ ...counterState, min: minInc })
     }
   }
 
-  const resetHandler = () => {
-    setValue(minValue)
+  const onClickResetHandler = () => {
+    setCounterState({ ...counterState, min: 0 }) // Потом прикрутить сюда значения из LS
   }
-
-
   return (
     <div className="App">
-      <InputBox value={value} maxValue={maxValue} />
-      <Button name={'+'} onClickHadnler={increaseHandler} isDisabled={value === maxValue} />
-      <Button name={'reset'} onClickHadnler={resetHandler} isDisabled={value < minValue} />
+      <div className={'window'}>
+        <div className={'setField'}>
+          <div className={'inputField'}>
+            <span className={'setMax'}>maximum</span>
+            <input type='number' value={max} onChange={onChangeMaxHandler} />
+            <span className={'setMin'}>minimum</span>
+            <input type='number' value={min} onChange={onChangeMinHandler} min={'0'} disabled={min >= max} />
+          </div>
+          <button disabled={!!error}>set</button>
+        </div>
+
+        <div className={'numberField'}>
+          {counterState.min === '' || error
+            ? <p>{initialText}</p>
+            : <p>{counterState.curNum}</p>}
+          <button onClick={onClickIncHandler} disabled={min >= max}>inc</button>
+          <button onClick={onClickResetHandler}>reset</button>
+        </div>
+      </div>
     </div>
   );
 }
