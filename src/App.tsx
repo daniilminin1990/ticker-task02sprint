@@ -1,8 +1,12 @@
-import React, {ChangeEvent, useRef, useState} from 'react';
+import React, {ChangeEvent, useEffect, useRef, useState} from 'react';
 import logo from './logo.svg';
 import './App.css';
-import { isDisabled } from '@testing-library/user-event/dist/utils';
+import {isDisabled} from '@testing-library/user-event/dist/utils';
 import {stringify} from "node:querystring";
+import {useDispatch, useSelector} from "react-redux";
+import {RootReducerType, store} from "./redux/store";
+import {counterReducer, getFromLSAC, incAC, resetAC, setMaxAC, setMinAC} from "./redux/counterReducer";
+import {loadState, saveState} from "./redux/localStorage";
 
 export type counterStateType = {
   min: number | string,
@@ -10,47 +14,58 @@ export type counterStateType = {
 }
 
 function App() {
-  const [error, setError] = useState<string>('')
+  let counterState = useSelector<RootReducerType, counterStateType>(state => state.counterReducer)
 
-  const [counterState, setCounterState] = useState<counterStateType>({
-    min: '',
-    max: '',
-  })
+  useEffect(() => {
+    try {
+      dispatch(getFromLSAC(loadState()))
+    } catch (err) {
+      return undefined
+    }
+  }, [])
 
-  const onChangeMaxHandler = (e: ChangeEvent<HTMLInputElement>) => {
-    setCounterState({...counterState, max: e.target.value})
-    console.log(counterState.max)
-    counterState.max === '-' && setError('Set max > 0')
-    if (counterState.max === '') {
-      setError('Set max')
-    }
-    if (Number(counterState.max) <= 0 && (Number(counterState.max) <= Number(counterState.min))) {
-      setError('You need to set correct max, it should be more than min')
-    }
-  }
-  const onChangeMinHandler = (e: ChangeEvent<HTMLInputElement>) => {
-    setCounterState({ ...counterState, min: e.target.value })
-    if (counterState.min === '' || counterState.min === '-') {
-      setError('Set min > 0')
-    }
-    if (Number(counterState.min) > 0) {
+  useEffect(() => {
+    if (Number(counterState.max) < 0) {
+      setError('Max should be more than 0')
+    } else {
       setError('')
     }
-  }
-
-  const onClickIncHandler = () => {
-    if (Number(counterState.max) <= 0 && (Number(counterState.max) <= Number(counterState.min))) {
-      setError('You need to set correct max, it should be more than min')
-    }
+  }, [counterState.max]);
+  useEffect(() => {
     if (Number(counterState.min) < 0) {
       setError('Set min more than 0')
-    } else {
-      setCounterState({ ...counterState, min: Number(counterState.min) + 1 })
+    }else {
+      setError('')
     }
+  }, [counterState.min]);
+
+  useEffect(() => {
+    if (Number(counterState.max) < Number(counterState.min)){
+      setError('Max should be more than min')
+    } else {
+      setError('')
+    }
+  }, [counterState.max, counterState.min]);
+
+  const dispatch = useDispatch()
+  const [error, setError] = useState<string>('')
+
+  const onChangeMaxHandler = (e: ChangeEvent<HTMLInputElement>) => {
+    dispatch(setMaxAC(e))
+  }
+  const onChangeMinHandler = (e: ChangeEvent<HTMLInputElement>) => {
+    dispatch(setMinAC(e))
+  }
+  const onClickIncHandler = () => {
+    dispatch(incAC())
   }
 
   const onClickResetHandler = () => {
-    setCounterState({ ...counterState, min: '' , max: ''}) // Потом прикрутить сюда значения из LS
+    dispatch(resetAC())
+  }
+
+  const setToLS = () => {
+    saveState(counterState)
   }
 
   return (
@@ -62,7 +77,7 @@ function App() {
             <p className={'setMax'}>maximum</p>
             <input value={counterState.max} onChange={onChangeMaxHandler} placeholder='Fill max value'
               // min='0'
-               type='text'
+                   type='text'
             />
             <p className={'setMin'}>minimum</p>
             <input value={counterState.min} onChange={onChangeMinHandler} placeholder='Fill min value'
@@ -70,11 +85,11 @@ function App() {
             />
 
           </div>
-          <button disabled={(counterState.min) >= (counterState.max)}>set</button>
+          <button disabled={(counterState.min) >= (counterState.max)} onClick={setToLS}>set</button>
         </div>
 
         <div className={'numberField'}>
-          {<div>{error ? error : counterState.min}</div>}
+          <div>{error}</div>
           <div>
             <button onClick={onClickIncHandler} disabled={(counterState.min) >= (counterState.max)}>inc</button>
             <button onClick={onClickResetHandler}>reset</button>
